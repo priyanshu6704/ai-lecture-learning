@@ -1,8 +1,11 @@
+import json
+import re
 import time
 
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pydantic import ValidationError
 
 from backend.schemas.study_notes import StudyNotes
 from backend.services.chunker import chunk_documents
@@ -32,6 +35,28 @@ def search_lecture(
     )
 
 
+def _get_retry_after_seconds(e: Exception) -> float | None:
+    """Groq returns a Retry-After header (and often restates the wait
+    time in the error message) on 429s. Prefer that exact value over a
+    blind exponential guess -- it's usually much shorter."""
+
+    response = getattr(e, "response", None)
+    if response is not None:
+        headers = getattr(response, "headers", None) or {}
+        retry_after = headers.get("retry-after") or headers.get("Retry-After")
+        if retry_after:
+            try:
+                return float(retry_after)
+            except ValueError:
+                pass
+
+    match = re.search(r"try again in ([\d.]+)s", str(e).lower())
+    if match:
+        return float(match.group(1))
+
+    return None
+
+
 def _invoke_with_retry(llm, prompt, max_retries=5):
 
     for attempt in range(max_retries):
@@ -46,10 +71,79 @@ def _invoke_with_retry(llm, prompt, max_retries=5):
             if "rate_limit" not in error and "429" not in error:
                 raise
 
-            wait_time = min(60, 10 * (2 ** attempt))
+            wait_time = _get_retry_after_seconds(e)
+            if wait_time is None:
+                wait_time = min(30, 5 * (2 ** attempt))
+
             time.sleep(wait_time)
 
     raise Exception("Groq rate limit remained active after retries.")
+
+
+def _extract_json(text: str) -> dict:
+    """Strip ```json fences (or any leading/trailing prose) and parse."""
+
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned[4:]
+        cleaned = cleaned.strip()
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+
+    if start == -1 or end == -1:
+        raise ValueError("No JSON object found in model output.")
+
+    return json.loads(cleaned[start:end + 1])
+
+
+def _generate_study_notes_via_json_fallback(llm, prompt, max_retries=3) -> StudyNotes:
+    """Only used if the primary tool-calling path below fails. Asks for
+    plain JSON and validates it locally instead of relying on Groq's
+    structured-output enforcement."""
+
+    json_prompt = prompt + """
+
+Respond with ONLY a single valid JSON object, no markdown fences, no
+commentary, matching exactly this shape:
+{
+  "lecture_summary": "<string>",
+  "key_concepts": ["<string>", "..."],
+  "definitions": ["<string>", "..."],
+  "important_points": ["<string>", "..."],
+  "examples": ["<string>", "..."]
+}
+"""
+
+    current_prompt = json_prompt
+
+    for attempt in range(max_retries):
+
+        response = _invoke_with_retry(llm, current_prompt)
+
+        try:
+            data = _extract_json(response.content)
+            return StudyNotes(**data)
+
+        except (ValueError, json.JSONDecodeError, ValidationError) as e:
+
+            if attempt == max_retries - 1:
+                raise Exception(
+                    f"Model failed to produce valid StudyNotes JSON after "
+                    f"{max_retries} attempts: {e}"
+                )
+
+            current_prompt = f"""
+{json_prompt}
+
+Your previous response was invalid: {e}
+
+Return ONLY the corrected JSON object. No markdown fences, no commentary,
+no text before or after the JSON.
+"""
 
 
 def _summarize_chunk(llm, text):
@@ -77,15 +171,13 @@ LECTURE SECTION:
 
     response = _invoke_with_retry(llm, prompt)
 
-    time.sleep(2)
-
     return response.content
 def generate_study_notes(
     documents: list[Document],
 ) -> StudyNotes:
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=6000,
+        chunk_size=16000,
         chunk_overlap=300,
     )
 
@@ -113,7 +205,8 @@ Preserve:
 - processes
 - examples
 
-Keep the summary concise.
+Write a reasonably detailed summary in full sentences, not just a bare
+list of keywords.
 
 LECTURE SECTION:
 
@@ -123,8 +216,6 @@ LECTURE SECTION:
         response = _invoke_with_retry(llm, prompt)
 
         summaries.append(response.content)
-
-        time.sleep(2)
 
     while len(summaries) > 4:
 
@@ -142,7 +233,17 @@ Combine these lecture summaries.
 Use ONLY the information provided.
 Remove duplicate information.
 Do not add outside knowledge.
-Keep important information.
+
+Preserve ALL of the following if present in the summaries, even if brief:
+- concepts
+- definitions
+- important points
+- formulas
+- processes
+- examples
+
+Do not drop examples during merging just because they seem minor --
+they are required output later.
 
 SUMMARIES:
 
@@ -152,8 +253,6 @@ SUMMARIES:
             response = _invoke_with_retry(llm, prompt)
 
             new_summaries.append(response.content)
-
-            time.sleep(2)
 
         summaries = new_summaries
 
@@ -178,7 +277,9 @@ Every field MUST be provided.
 Field requirements:
 
 lecture_summary:
-A concise paragraph summarizing the complete lecture.
+A well-developed summary of the complete lecture, written as 2-3 full
+paragraphs rather than a single short blurb. Explain the main ideas and
+how they relate, not just list them.
 
 key_concepts:
 A list of important concepts from the lecture.
@@ -203,10 +304,14 @@ LECTURE SUMMARIES:
 {final_context}
 """
 
-    structured_llm = llm.with_structured_output(
-        StudyNotes
-    )
+    try:
+        structured_llm = llm.with_structured_output(StudyNotes)
+        return structured_llm.invoke(final_prompt)
 
-    response = structured_llm.invoke(final_prompt)
-
-    return response
+    except Exception as e:
+        error = str(e).lower()
+        if "tool" in error or "json_validate" in error:
+            # Primary path failed -- fall back to plain-JSON + local
+            # validation instead of surfacing the error.
+            return _generate_study_notes_via_json_fallback(llm, final_prompt)
+        raise

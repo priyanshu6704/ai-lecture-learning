@@ -14,6 +14,28 @@ from reportlab.platypus import (
 
 from backend.schemas.study_notes import StudyNotes
 
+import unicodedata
+
+
+def _sanitize_text(text: str) -> str:
+
+    if not text:
+        return text
+
+    normalized = unicodedata.normalize("NFKD", text)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+    typographic_map = {
+        "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-",
+        "\u2018": "'", "\u2019": "'", "\u201a": ",",
+        "\u201c": '"', "\u201d": '"', "\u201e": '"',
+        "\u2026": "...", "\u00a0": " ", "\u2022": "-",
+    }
+    for bad, good in typographic_map.items():
+        normalized = normalized.replace(bad, good)
+
+    return normalized.encode("cp1252", errors="ignore").decode("cp1252")
+
 
 def generate_notes_pdf(notes: StudyNotes, output_path: str) -> str:
     output_file = Path(output_path)
@@ -50,14 +72,14 @@ def generate_notes_pdf(notes: StudyNotes, output_path: str) -> str:
     story.append(Paragraph("AI Lecture Study Notes", title_style))
 
     story.append(Paragraph("Lecture Summary", heading_style))
-    story.append(Paragraph(notes.lecture_summary, body_style))
+    story.append(Paragraph(_sanitize_text(notes.lecture_summary), body_style))
     story.append(Spacer(1, 8))
 
     story.append(Paragraph("Key Concepts", heading_style))
     story.append(
         ListFlowable(
             [
-                ListItem(Paragraph(concept, body_style))
+                ListItem(Paragraph(_sanitize_text(concept), body_style))
                 for concept in notes.key_concepts
             ],
             bulletType="bullet",
@@ -68,7 +90,7 @@ def generate_notes_pdf(notes: StudyNotes, output_path: str) -> str:
     story.append(
         ListFlowable(
             [
-                ListItem(Paragraph(definition, body_style))
+                ListItem(Paragraph(_sanitize_text(definition), body_style))
                 for definition in notes.definitions
             ],
             bulletType="bullet",
@@ -79,7 +101,7 @@ def generate_notes_pdf(notes: StudyNotes, output_path: str) -> str:
     story.append(
         ListFlowable(
             [
-                ListItem(Paragraph(point, body_style))
+                ListItem(Paragraph(_sanitize_text(point), body_style))
                 for point in notes.important_points
             ],
             bulletType="bullet",
@@ -90,7 +112,7 @@ def generate_notes_pdf(notes: StudyNotes, output_path: str) -> str:
     story.append(
         ListFlowable(
             [
-                ListItem(Paragraph(example, body_style))
+                ListItem(Paragraph(_sanitize_text(example), body_style))
                 for example in notes.examples
             ],
             bulletType="bullet",

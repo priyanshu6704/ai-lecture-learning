@@ -3,6 +3,8 @@ from tempfile import NamedTemporaryFile
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 from backend.document_loader import load_document
 
@@ -117,10 +119,13 @@ async def upload_lecture(
         )
 
 
+study_notes_cache = None
+
+
 @app.post("/generate-notes")
 async def generate_notes():
 
-    global documents
+    global documents, study_notes_cache
 
     if documents is None:
 
@@ -134,6 +139,8 @@ async def generate_notes():
         notes = generate_study_notes(
             documents
         )
+
+        study_notes_cache = notes
 
         return {
             "study_notes": notes
@@ -150,7 +157,7 @@ async def generate_notes():
 @app.post("/generate-notes-pdf")
 async def generate_notes_pdf_endpoint():
 
-    global documents
+    global documents, study_notes_cache
 
     if documents is None:
 
@@ -161,9 +168,7 @@ async def generate_notes_pdf_endpoint():
 
     try:
 
-        notes = generate_study_notes(
-            documents
-        )
+        notes = study_notes_cache if study_notes_cache is not None else generate_study_notes(documents)
 
         output_path = "study_notes.pdf"
 
@@ -183,7 +188,23 @@ async def generate_notes_pdf_endpoint():
             status_code=500,
             detail=str(e)
         )
+    
+@app.get("/download/notes-pdf")
+async def download_notes_pdf():
 
+    file_path = Path("study_notes.pdf")
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="No PDF found. Generate the notes PDF first."
+        )
+
+    return FileResponse(
+        path=str(file_path),
+        filename="study_notes.pdf",
+        media_type="application/pdf",
+    )
 
 @app.post("/quiz/start")
 async def start_mcq_quiz(

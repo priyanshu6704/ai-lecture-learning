@@ -1,4 +1,3 @@
-
 from backend.schemas.quiz import QuizResult
 from backend.schemas.speaking_evaluation import SpeakingEvaluation
 from backend.schemas.test_report import TestReport
@@ -36,13 +35,28 @@ Rules:
 - Do not calculate the score.
 - Do not change the score.
 - Do not invent concepts that are not present in the lecture context.
-- Keep the strengths concise.
-- Keep recommendations actionable.
+- Keep each strength concise.
+- Keep each recommendation actionable.
 - Return only the requested structured fields.
+
+Respond with ONLY a single valid JSON object, no other text, matching
+exactly this shape:
+{{
+  "strengths": ["<string>", "..."],
+  "recommendations": ["<string>", "..."]
+}}
+
+Both fields are REQUIRED JSON arrays with AT LEAST ONE item each -- never
+an empty array, and never a single combined string. If the score is low
+and there is little to praise, still include at least one genuine,
+modest strength (for example, effort shown, a correctly-grasped basic
+concept, or simply attempting the assessment) rather than leaving the
+array empty.
 """
 
     analysis = llm.with_structured_output(
-        ReportAnalysis
+        ReportAnalysis,
+        method="json_mode",
     ).invoke(prompt)
 
     return TestReport(
@@ -84,13 +98,28 @@ Rules:
 - Do not change the accuracy.
 - Do not invent concepts that are not present in the lecture context.
 - Use the provided evaluation feedback.
-- Keep the strengths concise.
-- Keep recommendations actionable.
+- Keep each strength concise.
+- Keep each recommendation actionable.
 - Return only the requested structured fields.
+
+Respond with ONLY a single valid JSON object, no other text, matching
+exactly this shape:
+{{
+  "strengths": ["<string>", "..."],
+  "recommendations": ["<string>", "..."]
+}}
+
+Both fields are REQUIRED JSON arrays with AT LEAST ONE item each -- never
+an empty array, and never a single combined string. If accuracy is low
+and there is little to praise, still include at least one genuine,
+modest strength (for example, effort shown, a correctly-grasped basic
+concept, or simply attempting the assessment) rather than leaving the
+array empty.
 """
 
     analysis = llm.with_structured_output(
-        ReportAnalysis
+        ReportAnalysis,
+        method="json_mode",
     ).invoke(prompt)
 
     return TestReport(

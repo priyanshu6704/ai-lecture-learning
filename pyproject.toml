@@ -26,6 +26,7 @@ dependencies = [
     "reportlab>=5.0.1",
     "sentence-transformers>=6.0.0",
     "streamlit>=1.62.0",
+    "streamlit-autorefresh>=1.0.1",
     "uvicorn[standard]>=0.52.4",
 ]
 

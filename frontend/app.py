@@ -1,39 +1,35 @@
+
+
 import streamlit as st
 
-from styles import load_css
 from state import init_state
-from components.navigation import render_navigation
+from styles import inject_global_styles
+from components.navigation import render_nav
 from components.footer import render_footer
-
-from pages.home import render_home
-from pages.upload import render_upload
-from pages.study import render_study
-
+from views import home, upload, study, test_selection, mcq, speaking, report
 
 st.set_page_config(
-    page_title="AI Lecture Learning",
+    page_title="LectureIQ",
     page_icon="✦",
-    layout="wide",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
 
-
 init_state()
+inject_global_styles()
+render_nav()
 
-load_css()
+PAGES = {
+    "home": home.render,
+    "upload": upload.render,
+    "study": study.render,
+    "test_selection": test_selection.render,
+    "mcq": mcq.render,
+    "speaking": speaking.render,
+    "report": report.render,
+}
 
-render_navigation()
-
-
-if st.session_state.page == "home":
-
-    render_home()
-
-elif st.session_state.page == "upload":
-
-    render_upload()
-
-elif st.session_state.page == "study":
-
-    render_study()
+current_page = st.session_state.get("page", "home")
+PAGES.get(current_page, home.render)()
 
 render_footer()
