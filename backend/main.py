@@ -1,5 +1,6 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+import tempfile
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
@@ -45,10 +46,15 @@ from backend.services.test_report_generator import (
     generate_mcq_report,
     generate_speaking_report,
 )
-
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # fine for a free demo; tighten later if you want
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Temporary application state
 documents = None
@@ -170,7 +176,7 @@ async def generate_notes_pdf_endpoint():
 
         notes = study_notes_cache if study_notes_cache is not None else generate_study_notes(documents)
 
-        output_path = "study_notes.pdf"
+        output_path = str(Path(tempfile.gettempdir()) / "study_notes.pdf")
 
         generate_notes_pdf(
             notes,
@@ -192,7 +198,7 @@ async def generate_notes_pdf_endpoint():
 @app.get("/download/notes-pdf")
 async def download_notes_pdf():
 
-    file_path = Path("study_notes.pdf")
+    file_path = Path(tempfile.gettempdir()) / "study_notes.pdf"
 
     if not file_path.exists():
         raise HTTPException(

@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import requests
 
-BASE_URL = "http://127.0.0.1:8000"
+import os
+BASE_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 TIMEOUT = 60  # seconds; default for fast endpoints
 LONG_TIMEOUT = 600  # seconds; for endpoints that chunk + call the LLM
                      # repeatedly (notes generation, reports) and can

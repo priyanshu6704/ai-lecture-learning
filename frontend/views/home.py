@@ -12,9 +12,7 @@ def render() -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        '<div class="alp-hero-sub">Upload a lecture and let AI turn it into structured '
-        "study notes, an MCQ challenge, a speaking challenge, and a final report on "
-        "where you stand.</div>",
+        '<div class="alp-hero-title">Learn smarter from<br><span class="grad">your lectures.</span></div>',
         unsafe_allow_html=True,
     )
 
@@ -37,7 +35,7 @@ def render() -> None:
             f"""
             <div class="alp-card quiet">
                 <strong>{title}</strong><br>
-                <span style="color:#5B6478">{desc}</span>
+                <span style="color:#93A0C2">{desc}</span>
             </div>
             """,
             unsafe_allow_html=True,

@@ -2,11 +2,10 @@
 
 import streamlit as st
 
-# Ordered list of (page_key, label) for the main learning flow.
 FLOW = [
     ("home", "Home"),
     ("upload", "Upload"),
-    ("study", "Study Notes"),
+    ("study", "Notes"),
     ("test_selection", "Test"),
     ("report", "Report"),
 ]
@@ -15,14 +14,14 @@ FLOW = [
 def render_nav() -> None:
     current = st.session_state.get("page", "home")
 
-    left, right = st.columns([3, 2])
+    left, right = st.columns([2, 3])
     with left:
         st.markdown(
-            '<div class="alp-nav-brand">Lecture<span>IQ</span></div>',
+            '<div class="alp-nav-brand">Lecture<span class="grad">IQ</span></div>',
             unsafe_allow_html=True,
         )
     with right:
-        cols = st.columns(len(FLOW))
+        cols = st.columns(len(FLOW), gap="small")
         for col, (key, label) in zip(cols, FLOW):
             with col:
                 disabled = key == current
@@ -30,14 +29,10 @@ def render_nav() -> None:
                     st.session_state.page = key
                     st.rerun()
 
-    st.markdown("<hr style='margin:0 0 1.2rem 0;border-color:#E4E7EF'>", unsafe_allow_html=True)
+    st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
 
 
 def render_progress(active_index: int, total: int = 5) -> None:
-    """Thin step rail shown under the hero on flow pages.
-
-    active_index is 0-based position within FLOW (Home..Report).
-    """
     segments = []
     for i in range(total):
         if i < active_index:

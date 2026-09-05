@@ -27,7 +27,7 @@ def render() -> None:
             <div class="alp-card">
                 <span class="alp-badge">Selected</span><br><br>
                 <strong>{uploaded_file.name}</strong><br>
-                <span style="color:#5B6478">{uploaded_file.size / 1024:.1f} KB</span>
+                <span style="color:#93A0C2">{uploaded_file.size / 1024:.1f} KB</span>
             </div>
             """,
             unsafe_allow_html=True,

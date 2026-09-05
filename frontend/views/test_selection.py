@@ -18,7 +18,7 @@ def render() -> None:
             """
             <div class="alp-card">
                 <strong>MCQ Challenge</strong><br>
-                <span style="color:#5B6478">Test your knowledge with timed multiple-choice questions.</span>
+                <span style="color:#93A0C2">Test your knowledge with timed multiple-choice questions.</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -32,7 +32,7 @@ def render() -> None:
             """
             <div class="alp-card accent">
                 <strong>Speaking Challenge</strong><br>
-                <span style="color:#5B6478">Explain a concept out loud and get AI feedback.</span>
+                <span style="color:#93A0C2">Explain a concept out loud and get AI feedback.</span>
             </div>
             """,
             unsafe_allow_html=True,
