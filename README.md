@@ -215,6 +215,6 @@ Distributed under the MIT License. See `LICENSE` for details.
 
 <div align="center">
 
-Made with 🎓 + 🤖 by **[Your Name]**
+Made with 🎓 + 🤖 by **Priyanshu Raj Chauhan**
 
 </div>
