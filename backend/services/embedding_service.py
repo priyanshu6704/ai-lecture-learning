@@ -1,7 +1,10 @@
-from langchain_huggingface import HuggingFaceEmbeddings
-embedding_model=HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+from functools import lru_cache
 
-def get_embeddings()->HuggingFaceEmbeddings:
-    return embedding_model
+from langchain_huggingface import HuggingFaceEmbeddings
+
+
+@lru_cache(maxsize=1)
+def get_embeddings() -> HuggingFaceEmbeddings:
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
