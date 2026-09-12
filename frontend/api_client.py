@@ -1,27 +1,13 @@
-"""
-api_client.py
 
-Every HTTP call to the FastAPI backend lives here -- nowhere else in the
-app should call `requests` directly. This keeps the API contract in one
-place and matches the spec's rule to centralize communication.
-
-IMPORTANT -- a couple of field names had to be assumed because the
-`schemas/*.py` files themselves weren't provided, only the API spec doc.
-Anywhere that's true is flagged with an "ASSUMPTION" comment. If your
-actual FastAPI route expects a different multipart field name or JSON
-key, change it here ONLY -- the rest of the app never needs to know.
-
-No endpoints beyond what's in the spec are invented. If a page needs
-something the backend doesn't expose yet, it should say so rather than
-fabricate a call.
-"""
 
 from __future__ import annotations
 
 import requests
 
 import os
-BASE_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
+import streamlit as st
+
+BASE_URL = st.secrets.get("BACKEND_URL", os.environ.get("BACKEND_URL", "http://127.0.0.1:8000"))
 TIMEOUT = 60  # seconds; default for fast endpoints
 LONG_TIMEOUT = 600  # seconds; for endpoints that chunk + call the LLM
                      # repeatedly (notes generation, reports) and can
