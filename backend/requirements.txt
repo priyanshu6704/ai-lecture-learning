@@ -12,5 +12,4 @@ python-pptx
 pydantic
 python-multipart
 langchain-huggingface
-sentence-transformers
 python-dotenv
