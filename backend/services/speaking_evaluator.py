@@ -1,4 +1,3 @@
-
 from backend.schemas.speaking_evaluation import SpeakingEvaluation
 from backend.services.llm_service import get_llm
 
@@ -40,13 +39,24 @@ Accuracy rules:
 Provide:
 1. accuracy
 2. concise feedback explaining the evaluation
+3. is_correct -- true if accuracy is 65 or above, false otherwise
 
 Do not invent information that is not present in the lecture context.
+
+Respond with ONLY a single valid JSON object, no markdown fences, no
+commentary, matching exactly this shape:
+{{
+  "accuracy": <number, 0-100>,
+  "feedback": "<string>",
+  "is_correct": <true or false>
+}}
 """
 
-    structured_llm = llm.with_structured_output(SpeakingEvaluation)
+    structured_llm = llm.with_structured_output(
+        SpeakingEvaluation,
+        method="json_mode",
+    )
 
     evaluation = structured_llm.invoke(prompt)
 
     return evaluation
-

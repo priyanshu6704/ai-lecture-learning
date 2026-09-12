@@ -127,16 +127,24 @@ def _record_screen() -> None:
     if st.session_state.speaking_evaluation:
         _result_block()
 
-
 def _result_block() -> None:
     result = st.session_state.speaking_evaluation
     is_correct = result.get("is_correct")
-    evaluation_text = result.get("evaluation", "")
+
+    evaluation_value = result.get("evaluation", "")
+    if isinstance(evaluation_value, dict):
+        evaluation_text = evaluation_value.get("feedback", "")
+        accuracy = evaluation_value.get("accuracy")
+    else:
+        evaluation_text = evaluation_value
+        accuracy = None
 
     st.markdown('<div class="alp-section-title">Result</div>', unsafe_allow_html=True)
     badge_cls = "success" if is_correct else "danger"
     badge_label = "Correct" if is_correct else "Needs Work"
     st.markdown(f'<span class="alp-badge {badge_cls}">{badge_label}</span>', unsafe_allow_html=True)
+    if accuracy is not None:
+        st.markdown(f'<span class="alp-badge accent">Accuracy: {accuracy}%</span>', unsafe_allow_html=True)
     st.markdown(f'<div class="alp-card">{evaluation_text}</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
@@ -149,14 +157,21 @@ def _result_block() -> None:
                     st.error(f"Could not generate report: {e.message}")
                     return
     with col2:
-        if st.button("Continue →", use_container_width=True):
+        if st.button("Continue →", type="primary", use_container_width=True):
+            if st.session_state.speaking_report is None:
+                with st.spinner("Generating report..."):
+                    try:
+                        st.session_state.speaking_report = api_client.generate_speaking_report()
+                    except api_client.ApiError as e:
+                        st.error(f"Could not generate report: {e.message}")
+                        return
             go_to("report")
+        
 
     if st.session_state.speaking_report:
         st.markdown('<div class="alp-section-title">Speaking Report</div>', unsafe_allow_html=True)
-        report=(st.session_state.speaking_report)
+        report = st.session_state.speaking_report
         render_report_dict(report) if isinstance(report, dict) else st.write(report)
-
 
 def render() -> None:
     render_progress(active_index=3)
